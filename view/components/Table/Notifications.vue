@@ -91,13 +91,15 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, onMounted } from 'vue';
+import { ref, reactive, computed, onMounted, watch } from 'vue';
 import ModalViewNotifications from '#components'; // Adjust path as needed
 
 const notifications = ref([]);
 const currentPage = ref(1);
 const pageCount = ref(20);
 const q = ref('');
+const route = useRoute();
+const { id } = route.params;
 
 const tableHeaders = [
   { key: 'notification_id', label: '#', sortable: false },
@@ -108,22 +110,78 @@ const tableHeaders = [
   { key: 'action', label: 'Action', sortable: false },
 ];
 
+
+const state = reactive({
+  user: {
+    user_id: null,
+    name: null,
+    gender: null,
+    phone_no: null,
+    username: null,
+    created_at: null,
+    updated_at: null,
+    status: null,
+    role: null,
+  },
+  errors: null,
+});
+
 async function fetchNotifications() {
   try {
-    const response = await fetch('http://127.0.0.1:8000/api/notifications');
-    if (!response.ok) {
-      throw new Error('Failed to fetch notifications');
+    if (state.user.user_id) {
+      const response = await fetch(`http://127.0.0.1:8000/api/notifications/showAll/${state.user.user_id}`);
+      if (!response.ok) {
+        throw new Error('Failed to fetch notifications');
+      }
+      const data = await response.json();
+      notifications.value = data.notifications;
     }
-    const data = await response.json();
-    notifications.value = data.notifications;
   } catch (error) {
     console.error('Error fetching notifications:', error);
   }
 }
 
-onMounted(() => {
-  fetchNotifications();
+async function fetchUser() {
+  const params = {
+    Authorization: "Bearer " + localStorage.getItem('_token'),
+    Accept: "application/json"
+  };
+  
+  try {
+    const response = await $fetch(`http://127.0.0.1:8000/api/user`, {
+      method: 'GET',
+      headers: params
+    });
+
+    state.user.user_id = response.user_id;
+    state.user.name = response.first_name + ' ' + response.last_name;
+    state.user.gender = response.gender;
+    state.user.phone_no = response.phone_no;
+    state.user.role = response.role;
+    state.user.status = response.status;
+    state.user.updated_at = response.updated_at;
+    state.user.username = response.username;
+    state.user.created_at = response.created_at;
+
+  } catch (error) {
+    state.errors = error.response;
+    console.log(error.response);
+    console.log('error', error);
+  }
+}
+
+onMounted(async () => {
+  await fetchUser();
 });
+
+watch(
+  () => state.user.user_id,
+  (newVal) => {
+    if (newVal) {
+      fetchNotifications();
+    }
+  }
+);
 
 const filteredRows = computed(() => {
   if (!q.value) {
@@ -158,8 +216,8 @@ const endItem = computed(() => {
 });
 
 const viewActionModal = (item) => {
-  const modal = useModal();
-  modal.open(ModalViewNotifications, { notification: item });
+  navigateTo(`/client/notifications/${item.notification_id}`)
 };
 
 </script>
+

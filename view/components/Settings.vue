@@ -129,16 +129,6 @@ const state = reactive({
   errors: null,
 });
 
-const initial = computed(() => state.user.name ? state.user.name.charAt(0).toUpperCase() : '');
-
-const editProfileRoute = computed(() => {
-  if (state.user.role === 'admin' || state.user.role === 'superadmin') {
-    return "/admin/settings/update/1";
-  } else if (state.user.role === 'client') {
-    return "/client/settings/update/1";
-  }
-});
-
 async function fetchUser() {
   const params = {
     Authorization: "Bearer " + localStorage.getItem('_token'),
@@ -151,7 +141,7 @@ async function fetchUser() {
       headers: params
     });
 
-    state.user.id = response.user_id;
+    state.user.user_id = response.user_id;
     state.user.name = response.first_name + ' ' + response.last_name;
     state.user.gender = response.gender;
     state.user.phone_no = response.phone_no;
@@ -165,9 +155,6 @@ async function fetchUser() {
     state.errors = error.response;
     console.log(error.response);
     console.log('error', error);
-
-    alert("Not logged in, log in first.");
-    navigateTo('/');
   }
 }
 
@@ -178,5 +165,19 @@ function handleSignOut() {
 
 onMounted(() => {
   fetchUser();
+  
+});
+
+
+
+const initial = computed(() => state.user.name ? state.user.name.charAt(0).toUpperCase() : '');
+const route = useRoute();
+const { id } = route.params;
+const editProfileRoute = computed(() => {
+  if (state.user.role === 'admin' || state.user.role === 'superadmin') {
+    return `/admin/settings/update/${state.user.user_id}`;
+  } else if (state.user.role === 'client') {
+    return `/client/settings/update/${state.user.user_id}`;
+  }
 });
 </script>

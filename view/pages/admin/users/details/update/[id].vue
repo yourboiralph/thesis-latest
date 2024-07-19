@@ -40,7 +40,7 @@
               <section class="w-auto">
                 <UButton label="Cancel" icon="i-lucide-x"
                   class="flex justify-center w-full items-center rounded dark:bg-red-600 dark:hover:bg-red-500 bg-red-700 hover:bg-red-600 dark:text-custom-100"
-                  to="/admin/users/details/1" />
+                  :to="`/admin/users/details/${id}`" />
               </section>
 
               <section class="w-auto">
@@ -124,7 +124,7 @@
             </UFormGroup>
 
             <!-- phone -->
-            <UFormGroup class="w-full" name="phone">
+            <UFormGroup class="w-full" name="phone_no">
               <template #label>
                 <div class="flex items-center justify-start gap-1">
                   <p class="text-sm">Phone no.</p>
@@ -132,7 +132,7 @@
                 </div>
               </template>
               <template #default="{ error }">
-                <UInput type="text" color="gray" size="md" v-model="state.phone" :ui="{
+                <UInput type="text" color="gray" size="md" v-model="state.phone_no" :ui="{
                   rounded: 'rounded',
                   color: error ?
                     { red: { outline: 'bg-red-100 dark:bg-red-50 text-custom-900 dark:text-custom-900 focus:ring-1 focus:ring-red-400 border-2 border-red-400 focus:border-red-400 active:ring-red-400 active:border-red-400' } } : { gray: { outline: 'dark:bg-custom-100 dark:text-custom-900' } }
@@ -158,7 +158,7 @@
             <!-- role -->
             <UFormGroup class="w-full" label="Role" name="role">
               <template #default="{ error }">
-                <USelectMenu disabled color="gray" size="md" :ui="{
+                <USelectMenu color="gray" size="md" :ui="{
                   rounded: 'rounded',
                   color: error ?
                     { red: { outline: 'bg-red-100 dark:bg-red-50 text-custom-900 dark:text-custom-900 focus:ring-1 focus:ring-red-400 border-2 border-red-400 focus:border-red-400 active:ring-red-400 active:border-red-400' } } : { gray: { outline: 'dark:bg-custom-100 dark:text-custom-900' } }
@@ -222,6 +222,7 @@
 </template>
 
 <script setup lang="ts">
+import { useRoute } from 'vue-router';
 definePageMeta({
   layout: 'sidebar'
 })
@@ -251,12 +252,27 @@ const genderOptions = [
   }
 ];
 
+const roleOptions = [
+  {
+    value: 'client',
+    label: 'client'
+  },
+  {
+    value: 'admin',
+    label: 'admin'
+  },
+  {
+    value: 'superadmin',
+    label: 'superadmin'
+  }
+];
+
 const state = reactive({
   first_name: undefined,
   last_name: undefined,
   m_i: undefined,
   gender: undefined,
-  phone: undefined,
+  phone_no: undefined,
   status: statusOptions[0].value,
   role: user.role,
   username: undefined,
@@ -268,7 +284,7 @@ const validate = (state: any): FormError[] => {
   if (!state.first_name) errors.push({ path: 'first_name', message: 'Required' })
   if (!state.last_name) errors.push({ path: 'last_name', message: 'Required' })
   if (!state.gender) errors.push({ path: 'gender', message: 'Required' })
-  if (!state.phone) errors.push({ path: 'phone', message: 'Required' })
+  if (!state.phone_no) errors.push({ path: 'phone_no', message: 'Required' })
   if (!state.status) errors.push({ path: 'status', message: 'Required' })
   if (!state.username) errors.push({ path: 'username', message: 'Required' })
   if (!state.password) errors.push({ path: 'password', message: 'Required' })
@@ -278,21 +294,64 @@ const validate = (state: any): FormError[] => {
 const loading = ref(false);
 const loadIcon = ref('');
 const label = ref('Update');
+const route = useRoute();
+const { id } = route.params;
 
 async function onSubmit(event: FormSubmitEvent<any>) {
-  // Do something with data
-  console.log(event.data)
+  try {
+    console.log('Submitting with data:', event.data);
+    loading.value = true;
+    loadIcon.value = 'i-lucide-loader-circle';
+    label.value = '';
 
-  loading.value = true;
-  loadIcon.value = 'i-lucide-loader-circle';
-  label.value = '';
+    // Extract the role value from event.data
+    const roleValue = event.data.role.value;
 
-  setTimeout(() => {
-    label.value = 'Update';
+    // Validate role against allowed values
+    if (!['admin', 'client', 'superadmin'].includes(roleValue)) {
+      console.error('Invalid role value:', roleValue);
+      // Handle invalid role value error (e.g., show a message to the user)
+      return;
+    }
+
+    const response = await fetch(`http://127.0.0.1:8000/api/users/${id}/edit`, {
+      method: 'PUT',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({ ...event.data, role: roleValue }), // Ensure role is sent as a string
+    });
+
+    const responseData = await response.json();
+    console.log('Response from server:', responseData);
+
+    if (response.ok) {
+      // Update local state with the updated user data
+      state.first_name = responseData.data.first_name;
+      state.last_name = responseData.data.last_name;
+      state.m_i = responseData.data.middle_initial;
+      state.gender = responseData.data.gender;
+      state.phone_no = responseData.data.phone_no;
+      state.status = responseData.data.status;
+      state.role = roleValue; // Update with roleValue instead of responseData.data.role.value
+      state.username = responseData.data.username;
+
+      // Navigate to details page or any other appropriate action
+      navigateTo(`/admin/users/details/${id}`);
+    } else {
+      // Handle errors from API
+      console.error('Failed to update user:', responseData.message);
+      // Display an error message or handle it accordingly
+    }
+  } catch (error) {
+    console.error('Error updating user:', error);
+  } finally {
     loading.value = false;
-    navigateTo('/admin/users/details/1')
-  }, 800)
+    loadIcon.value = '';
+    label.value = 'Update';
+  }
 }
+
 
 async function onError(event: FormErrorEvent) {
   const element = document.getElementById(event.errors[0].id)
@@ -305,7 +364,7 @@ const links = [{
   to: '/admin/users'
 }, {
   label: 'Details',
-  to: '/admin/users/details/1'
+  to: `/admin/users/details/${id}`
 }, {
   label: 'Update',
 }

@@ -338,18 +338,29 @@ const loadIcon = ref('');
 const label = ref('Save');
 
 async function onSubmit(event: FormSubmitEvent<any>) {
-  // Do something with data
-  console.log(event.data)
+  try {
+    loading.value = true;
+    loadIcon.value = 'i-lucide-loader-circle';
+    label.value = '';
 
-  loading.value = true;
-  loadIcon.value = 'i-lucide-loader-circle';
-  label.value = '';
+    const response = await $fetch('http://127.0.0.1:8000/api/users', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify(state),
+    });
 
-  setTimeout(() => {
     label.value = 'Save';
     loading.value = false;
-    navigateTo('/admin/users')
-  }, 800)
+    navigateTo('/admin/users');
+
+    console.log('User created successfully:', response.data);
+    // Optionally, you can update your UI or perform additional actions based on the response.
+  } catch (error) {
+    console.error('Error creating user:', error);
+    // Handle error states or display error messages to the user.
+  }
 }
 
 async function onError(event: FormErrorEvent) {

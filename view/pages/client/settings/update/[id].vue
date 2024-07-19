@@ -123,7 +123,7 @@
             </UFormGroup>
 
             <!-- phone -->
-            <UFormGroup class="w-full" name="phone">
+            <UFormGroup class="w-full" name="phone_no">
               <template #label>
                 <div class="flex items-center justify-start gap-1">
                   <p class="text-sm">Phone no.</p>
@@ -131,7 +131,7 @@
                 </div>
               </template>
               <template #default="{ error }">
-                <UInput type="text" color="gray" size="md" v-model="state.phone" :ui="{
+                <UInput type="text" color="gray" size="md" v-model="state.phone_no" :ui="{
                   rounded: 'rounded',
                   color: error ?
                     { red: { outline: 'bg-red-100 dark:bg-red-50 text-custom-900 dark:text-custom-900 focus:ring-1 focus:ring-red-400 border-2 border-red-400 focus:border-red-400 active:ring-red-400 active:border-red-400' } } : { gray: { outline: 'dark:bg-custom-100 dark:text-custom-900' } }
@@ -199,7 +199,6 @@ definePageMeta({
 
 import type { FormError, FormErrorEvent, FormSubmitEvent } from '#ui/types'
 
-
 const genderOptions = [
   {
     value: 'male',
@@ -216,7 +215,7 @@ const state = reactive({
   last_name: undefined,
   m_i: undefined,
   gender: undefined,
-  phone: undefined,
+  phone_no: undefined,
   username: undefined,
   password: undefined
 })
@@ -226,7 +225,7 @@ const validate = (state: any): FormError[] => {
   if (!state.first_name) errors.push({ path: 'first_name', message: 'Required' })
   if (!state.last_name) errors.push({ path: 'last_name', message: 'Required' })
   if (!state.gender) errors.push({ path: 'gender', message: 'Required' })
-  if (!state.phone) errors.push({ path: 'phone', message: 'Required' })
+  if (!state.phone_no) errors.push({ path: 'phone_no', message: 'Required' })
   if (!state.username) errors.push({ path: 'username', message: 'Required' })
   if (!state.password) errors.push({ path: 'password', message: 'Required' })
   return errors
@@ -235,21 +234,46 @@ const validate = (state: any): FormError[] => {
 const loading = ref(false);
 const loadIcon = ref('');
 const label = ref('Update');
+const route = useRoute();
+const router = useRouter();
+const { id } = route.params;
+
 
 async function onSubmit(event: FormSubmitEvent<any>) {
-  // Do something with data
-  console.log(event.data)
 
-  loading.value = true;
-  loadIcon.value = 'i-lucide-loader-circle';
-  label.value = '';
+  try {
+    loading.value = true;
+    label.value = 'Updating...';
 
-  setTimeout(() => {
-    label.value = 'Update';
-    loading.value = false;
+    const response = await fetch(`http://127.0.0.1:8000/api/users/${id}/edit`, {
+      method: 'PUT',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify(event.data),
+    });
+
+    if (!response.ok) {
+      throw new Error('Failed to update user information');
+    }
+
+    const data = await response.json();
+    console.log('User updated successfully:', data);
     navigateTo('/client/settings')
-  }, 800)
+
+    // Optionally update UI or show success message
+  } catch (error) {
+    console.error('Error updating user:', error);
+    // Handle error (show error message, rollback changes, etc.)
+  } finally {
+    loading.value = false;
+    label.value = 'Update';
+  }
 }
+
+
+
+
 
 async function onError(event: FormErrorEvent) {
   const element = document.getElementById(event.errors[0].id)
